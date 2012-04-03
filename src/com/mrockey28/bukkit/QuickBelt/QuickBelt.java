@@ -1,5 +1,5 @@
 // QuickBelt - a Bukkit plugin
-// Copyright (C) 2011 Robert Sargant
+// Copyright (C) 2011 Robert Sargant, 2012 Matthew Rockey
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package com.sargant.bukkit.quickbelt;
+package com.mrockey28.bukkit.QuickBelt;
 
 import java.io.File;
 import java.io.IOException;

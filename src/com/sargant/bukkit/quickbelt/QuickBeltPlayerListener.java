@@ -22,31 +22,33 @@ import java.util.List;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 
-public class QuickBeltPlayerListener extends PlayerListener {
-	
+public class QuickBeltPlayerListener implements Listener {
 	private QuickBelt parent;
 
 	public QuickBeltPlayerListener(QuickBelt instance) {
 		parent = instance;
 	}
 	
-	@Override
+	@EventHandler(priority = EventPriority.LOWEST)
 	public void onPlayerQuit(PlayerQuitEvent event) { cleanup(event); }
 	
-	@Override
+	@EventHandler(priority = EventPriority.LOWEST)
 	public void onPlayerKick(PlayerKickEvent event) { cleanup(event); }
 
-	@Override
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerMove(PlayerMoveEvent event) { invCheck(event); }
 	
-	@Override
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerAnimation(PlayerAnimationEvent event) { invCheck(event); }
 	
-	@Override
-	public void onPlayerDropItem(PlayerDropItemEvent event) { invCheck(event); }
+	@EventHandler(priority = EventPriority.HIGHEST)
+	public void onPlayerDropItem(PlayerDropItemEvent event) { parent.log.info("stuff"); invCheck(event); }
 	
 	private void invCheck(PlayerEvent pev) {
 		
@@ -91,60 +93,41 @@ public class QuickBeltPlayerListener extends PlayerListener {
 		// No need to clean up just a few bytes...
 	}
 	
-	
-	private Boolean dropColumns(List<ItemStack> inv, String whatSlots) {
+	private void algorithmDrop(Player player, List<ItemStack> previous_inv,List<ItemStack> current_inv) {
 		
-		Boolean didDrop = false;
-		
-		if(whatSlots == null) whatSlots = "all";
-		
-		for(Integer i = 9; i <= 26; i++) {
-			if(!whatSlots.equals("all")) {
-				Integer colNumber = 1 + (i % 9);
-				if(!whatSlots.contains(String.valueOf(colNumber))) continue;
-			}
+		for(Integer i=0; i<= 8; i++) {
 			
-			if(!isAir(inv.get(i)) && isAir(inv.get(i+9))) { 
-			    didDrop = true;
-			    ItemStack swap = inv.get(i+9);
-	            inv.set(i+9, inv.get(i));
-	            inv.set(i, swap);
-			}
+			if(isAir(current_inv.get(i))) {
+				Integer j;
+				for (j=9; j<=35; j++) {
+					if (!isAir(current_inv.get(j)) && !isAir(previous_inv.get(i))) {
+						if (current_inv.get(j).getType() == previous_inv.get(i).getType()) {
+						
 			
-		}
-		return didDrop;
-	}
-	
-	private void algorithmDrop(Player player, List<ItemStack> previous_inv, List<ItemStack> current_inv) {
-		
-		String slotsString = parent.useSlots.get(player.getName());
-		dropColumns(current_inv, slotsString);
-		
-		if(slotsString == null) slotsString = "all";
-		
-		Boolean didDrop = false;
-		// Secondly, we'll move things into their empty slots if vacant
-		for(Integer i = 0; i <= 8; i++) {
-			
-			if(!slotsString.equals("all") && !slotsString.contains(String.valueOf(i+1))) continue;
-			
-			if(isAir(current_inv.get(i)) && !isAir(current_inv.get(i+27))) {
-				didDrop = true;
-				ItemStack swap = current_inv.get(i+27);
-				current_inv.set(i+27, current_inv.get(i));
-				current_inv.set(i, swap);
-				
-				if(!parent.silent) {
-					player.sendMessage(ChatColor.AQUA.toString() + "Replenished slot " + (i+1) + ChatColor.WHITE.toString());
+							ItemStack swap = current_inv.get(j);
+							current_inv.set(j, current_inv.get(i));
+							current_inv.set(i, swap);
+						
+							if(!parent.silent) {
+								player.sendMessage(ChatColor.AQUA.toString() + "Replenished slot " + (i+1) + ChatColor.WHITE.toString());
+							}
+							break;
+						}
+					}
+				}
+				//else identical item found
+				if (j == 36 && !isAir(previous_inv.get(i))) {
+					if(!parent.silent) {
+						player.sendMessage(ChatColor.AQUA.toString() + "Depleted slot " + (i+1) + ChatColor.WHITE.toString());
+					}
 				}
 			}
+			
 		}
 		
-		// Now we catch up on ourselves and keep dropping to the bottom
-		while(didDrop == true) {
-			didDrop = dropColumns(current_inv,  parent.useSlots.get(player.getName()));
-		}
+		
 	}
+	
 	
 	private boolean isAir(ItemStack m) {
 	    if(m == null) return true;

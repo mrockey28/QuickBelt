@@ -21,18 +21,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Logger;
-
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
-import org.bukkit.event.Event.Priority;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import com.sargant.bukkit.common.Common;
 
 public class QuickBelt extends JavaPlugin {
 	
@@ -43,6 +37,7 @@ public class QuickBelt extends JavaPlugin {
 	protected QuickBeltPlayerListener playerListener;
 	protected Boolean force;
 	protected Boolean silent;
+	private File yml;
 	
 	public QuickBelt() {
 		log = Logger.getLogger("Minecraft");
@@ -64,14 +59,15 @@ public class QuickBelt extends JavaPlugin {
 	public void onEnable() {
 		
 		getDataFolder().mkdirs();
-		File yml = new File(getDataFolder(), "config.yml");
+		yml = new File(getDataFolder(), "config.yml");
 
 		if (!yml.exists())
 		{
 			try {
+				
 				yml.createNewFile();
-				getConfiguration().setProperty("quickbelt", null);
-				getConfiguration().save();
+				getConfig().set("quickbelt", null);
+				getConfig().save(yml);
 			} catch (IOException ex){
 				log.warning(getDescription().getName() + ": could not generate config.yml. Are the file permissions OK?");
 			}
@@ -79,7 +75,7 @@ public class QuickBelt extends JavaPlugin {
 		
 		// Load in the values from the configuration file
 		
-		List <String> keys = Common.getRootKeys(this);
+		List <String> keys = getRootKeys(this);
 		
 		if(keys == null || !keys.contains("quickbelt")) {
 			log.warning(getDescription().getName() + ": configuration file is corrupt. Please delete it and start over.");
@@ -87,39 +83,41 @@ public class QuickBelt extends JavaPlugin {
 		}
 		
 		if(keys.contains("force")) {
-			force = getConfiguration().getBoolean("force", false);
+			force = getConfig().getBoolean("force", false);
 		} else {
-			getConfiguration().setProperty("force", false);
-			getConfiguration().save();
+			getConfig().set("force", false);
+			try {
+				getConfig().save(yml);
+			} catch (IOException e) {
+				log.warning(getDescription().getName() + ": could not write to config.yml. Are the file permissions OK?");
+			}
 		}
 		
 		if(keys.contains("silent")) {
-			silent = getConfiguration().getBoolean("silent", false);
+			silent = getConfig().getBoolean("silent", false);
 		} else {
-			getConfiguration().setProperty("silent", false);
-			getConfiguration().save();
+			getConfig().set("silent", false);
+			try {
+				getConfig().save(yml);
+			} catch (IOException e) {
+				log.warning(getDescription().getName() + ": could not write to config.yml. Are the file permissions OK?");
+			}
 		}
 		
-		List <String> users = getConfiguration().getKeys("quickbelt");
+		//TODO: is this right?
+		List <String> users = getConfig().getStringList("quickbelt");
 		
 		if(users != null) {
 			for(String u : users) {
-				String st = getConfiguration().getString("quickbelt."+u+".enabled", "false");
+				String st = getConfig().getString("quickbelt."+u+".enabled", "false");
 				status.put(u, st);
 				
-				String sl = getConfiguration().getString("quickbelt."+u+".slots", "all");
+				String sl = getConfig().getString("quickbelt."+u+".slots", "all");
 				useSlots.put(u, sl);
 			}
 		}
 		
-		PluginManager pm = getServer().getPluginManager();
-		
-		pm.registerEvent(Event.Type.PLAYER_ANIMATION, playerListener, Priority.Highest, this);
-		pm.registerEvent(Event.Type.PLAYER_DROP_ITEM, playerListener, Priority.Highest, this);
-		pm.registerEvent(Event.Type.PLAYER_MOVE, playerListener, Priority.Highest, this);
-		
-		pm.registerEvent(Event.Type.PLAYER_KICK, playerListener, Priority.Lowest, this);
-		pm.registerEvent(Event.Type.PLAYER_QUIT, playerListener, Priority.Lowest, this);
+		getServer().getPluginManager().registerEvents(playerListener, this);
 
 		log.info(getDescription().getName() + " " + getDescription().getVersion() + " loaded.");
 	}
@@ -215,8 +213,13 @@ public class QuickBelt extends JavaPlugin {
 	}
 	
 	private void updateConfig(String player, String component, String value) {
-		getConfiguration().setProperty("quickbelt." + player + "." + component, value);
-		getConfiguration().save();
+		getConfig().set("quickbelt." + player + "." + component, value);
+		try {
+			getConfig().save(yml);
+		} catch (IOException ex){
+			log.warning(getDescription().getName() + ": could not write to config.yml. Are the file permissions OK?");
+		}
+		
 	}
 	
 	private String slotsStatus(String slots) {
@@ -237,10 +240,20 @@ public class QuickBelt extends JavaPlugin {
 		
 		String pchk = status.get(p.getName());
 		
+		log.info("stuff: " +pchk);
 		if(pchk == null) return false;
 		if(pchk.equalsIgnoreCase("false")) return false;
 		if(pchk.equalsIgnoreCase("off")) return false;
 		
 		return true;
+	}
+	
+	static public List<String> getRootKeys(JavaPlugin plugin) {
+		List <String> keys;	
+		try {
+			keys = plugin.getConfig().getStringList("quickbelt");
+		} 
+		catch(NullPointerException ex) { return null; }
+		return keys;
 	}
 }

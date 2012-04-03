@@ -1,0 +1,7 @@
+name: QuickBelt
+main: com.sargant.bukkit.quickbelt.QuickBelt
+version: 0.1.9.1
+commands:
+  qb:
+    description: Quickbelt invocation
+permissions:
